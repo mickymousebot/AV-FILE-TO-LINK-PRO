@@ -24,7 +24,7 @@ PICS = (environ.get('PICS', 'https://envs.sh/b6H.jpg'))
 
 # channel link information
 CHANNEL = environ.get('CHANNEL', 'https://t.me/')
-CHAN_LINK = environ.get('CHAN_LINK', 'http://t.me/AV_F2L_BOT?startchannel=true')
+CHAN_LINK = environ.get('CHAN_LINK', 'https://t.me/ynvmoviesupdates')
 
 #Dont Remove My Credit @AV_BOTz_UPDATE 
 #This Repo Is By @BOT_OWNER26 
@@ -42,7 +42,7 @@ DATABASE_NAME = environ.get('DATABASE_NAME', "Movies24")
 # fsub  information
 AUTH_PICS = environ.get('AUTH_PICS', 'https://envs.sh/AwV.jpg')              
 AUTH_CHANNEL = int(environ.get("AUTH_CHANNEL", "-1002226636138"))
-FSUB = environ.get("FSUB", False)
+FSUB = environ.get("FSUB", True)
 
 # port information
 PORT = int(getenv('PORT', '2626'))
