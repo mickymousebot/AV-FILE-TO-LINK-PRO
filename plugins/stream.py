@@ -53,15 +53,7 @@ async def private_receive_handler(c: Client, m: Message):
         )
         
         # Wait for 6 hours (21600 seconds)
-        await asyncio.sleep(21600)  # Sleep for 6 hours
-
-        # After 6 hours, delete `log_msg`, `a`, and `k`
-        try:
-            await log_msg.delete()
-            await a.delete()
-            await k.delete()
-        except Exception as e:
-            print(f"Error during deletion: {e}")
+        
 
     except FloodWait as e:
         print(f"Sleeping for {str(e.x)}s")
