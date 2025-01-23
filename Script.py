@@ -97,9 +97,7 @@ Nᴀᴍᴇ - {}"""
 
 <b>🖥 Stream  : </b> <code>{}</code>
 
-<b>📥 Download : </b> <code>{}</code>
-
-<b>⚠️ ᴛʜɪꜱ ʟɪɴᴋ ᴡɪʟʟ ᴇxᴘɪʀᴇ ᴀꜰᴛᴇʀ 𝟼 ʜᴏᴜʀꜱ</b>"""
+<b>📥 Download : </b> <code>{}</code></b>"""
 
 #Dont Remove My Credit @AV_BOTz_UPDATE 
 #This Repo Is By @BOT_OWNER26 
