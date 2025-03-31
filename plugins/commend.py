@@ -4,11 +4,11 @@ from database.users_db import db
 from pyrogram import Client, filters, enums
 from pyrogram.errors import *
 from pyrogram.types import *
-from info import *
-from .fsub import get_fsub
+from info import BOT_USERNAME, OWNER_USERNAME, SUPPORT, PICS, CHANNEL, LOG_CHANNEL, FSUB, BIN_CHANNEL
 import re
 from utils import get_readable_time
 from web.utils import StartTime, __version__
+from plugins.avbot import is_user_joined
 
 #Dont Remove My Credit @AV_BOTz_UPDATE 
 #This Repo Is By @BOT_OWNER26 
@@ -19,53 +19,46 @@ async def start(client, message):
     if not await db.is_user_exist(message.from_user.id):
         await db.add_user(message.from_user.id, message.from_user.first_name)
         await client.send_message(LOG_CHANNEL, script.LOG_TEXT.format(message.from_user.id, message.from_user.mention))
-    if len(message.command) != 2:
+    if FSUB:
+        if not await is_user_joined(client, message):
+            return
+    if len(message.command) != 2 or (len(message.command) == 2 and message.command[1] == "start"):
         buttons = [[
             InlineKeyboardButton('• ᴜᴘᴅᴀᴛᴇᴅ •', url=CHANNEL),
 	    InlineKeyboardButton('• sᴜᴘᴘᴏʀᴛ •', url=SUPPORT)
         ],[
             InlineKeyboardButton('• ʜᴇʟᴘ •', callback_data='help'),
             InlineKeyboardButton('• ᴀʙᴏᴜᴛ •', callback_data='about')
+        ],[
+ 	    InlineKeyboardButton('♻️ ᴅᴇᴠᴇʟᴏᴘᴇʀ ♻️', url=f"https://t.me/{OWNER_USERNAME}")
         ]]
         reply_markup = InlineKeyboardMarkup(buttons)
-        await message.reply_photo(photo=PICS, caption=script.START_TXT.format(message.from_user.mention, BOT_USERNAME),
-            reply_markup=reply_markup,
-            parse_mode=enums.ParseMode.HTML
+        await message.reply_photo(
+            photo=(PICS),
+            caption=script.START_TXT.format(message.from_user.mention, BOT_USERNAME),
+            reply_markup=reply_markup
         )
         return
+    msg = message.command[1]
 
-    if len(message.command) == 2 and message.command[1] in ["start"]:
-        if FSUB:
-            is_participant = await get_fsub(client, message)
-            if not is_participant:
-               return
-            btn = [[
-                InlineKeyboardButton('• ᴜᴘᴅᴀᴛᴇᴅ •', url=CHANNEL),
-	        InlineKeyboardButton('• sᴜᴘᴘᴏʀᴛ •', url=SUPPORT)
-            ],[
-                InlineKeyboardButton('• ʜᴇʟᴘ •', callback_data='help'),
-                InlineKeyboardButton('• ᴀʙᴏᴜᴛ •', callback_data='about')
-            ]]
-            await message.reply_photo(photo=PICS, caption=script.START_TXT.format(message.from_user.mention, BOT_USERNAME),
-                reply_markup=InlineKeyboardMarkup(btn),
-                parse_mode=enums.ParseMode.HTML
-            )
-            return
+    if msg.startswith("file"):
+        _, file_id = msg.split("_", 1)
+        return await client.copy_message(chat_id=message.from_user.id, from_chat_id=int(BIN_CHANNEL), message_id=int(file_id))
 
 #Dont Remove My Credit @AV_BOTz_UPDATE 
 #This Repo Is By @BOT_OWNER26 
 # For Any Kind Of Error Ask Us In Support Group @AV_SUPPORT_GROUP
-            
+	
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
     if query.data == "close_data":
         await query.message.delete()
     elif query.data == "about":
         buttons = [[
+	    InlineKeyboardButton('💻 sᴏᴜʀᴄᴇ ᴄᴏᴅᴇ', url='https://github.com/Botsthe/AV-FILE-TO-LINK.git')
+	],[
             InlineKeyboardButton('• ʜᴏᴍᴇ •', callback_data='start'),
 	    InlineKeyboardButton('• ᴄʟᴏsᴇ •', callback_data='close_data')
-	],[
-	    InlineKeyboardButton('☢️ ʙᴏᴛ ᴏᴡɴᴇʀ ☢️', url=f"https://t.me/{OWNER_USERNAME}")
         ]]
         reply_markup = InlineKeyboardMarkup(buttons)
         me2 = (await client.get_me()).mention
@@ -82,6 +75,8 @@ async def cb_handler(client: Client, query: CallbackQuery):
         ],[
             InlineKeyboardButton('• ʜᴇʟᴘ •', callback_data='help'),
             InlineKeyboardButton('• ᴀʙᴏᴜᴛ •', callback_data='about')
+        ],[
+ 	    InlineKeyboardButton('♻️ ᴅᴇᴠᴇʟᴏᴘᴇʀ ♻️', url=f"https://t.me/{OWNER_USERNAME}")
         ]]
         reply_markup = InlineKeyboardMarkup(buttons)
         await query.message.edit_text(
@@ -172,8 +167,9 @@ async def help(client, message):
        InlineKeyboardButton('• ᴄʟᴏsᴇ •', callback_data='close_data')
     ]]
     reply_markup = InlineKeyboardMarkup(btn)
-    await message.send_text(
+    await message.reply_text(
         text=script.HELP2_TXT,
+        disable_web_page_preview=True, 
         reply_markup=reply_markup
     )
 
@@ -188,8 +184,9 @@ async def about(client, message):
     ]]
     reply_markup = InlineKeyboardMarkup(buttons)
     me2 = (await client.get_me()).mention
-    await message.send_text(
+    await message.reply_text(
         text=script.ABOUT_TXT.format(me2, me2, get_readable_time(time.time() - StartTime), __version__),
+        disable_web_page_preview=True, 
         reply_markup=reply_markup
     )
 	
