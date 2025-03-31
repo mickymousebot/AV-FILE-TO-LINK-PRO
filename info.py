@@ -21,11 +21,20 @@ ADMINS = [int(admin) if id_pattern.search(admin) else admin for admin in environ
 OWNER_USERNAME = environ.get("OWNER_USERNAME", 'BOT_OWNER26') # without @ 
 
 # pics information
-PICS = environ.get('PICS', 'https://envs.sh/b6H.jpg')
+PICS = environ.get('PICS', 'https://envs.sh/_pM.jpg')
 
 # channel link information
-CHANNEL = environ.get('CHANNEL', 'https://t.me/')
-SUPPORT = environ.get('SUPPORT', 'http://t.me/')
+CHANNEL = environ.get('CHANNEL', 'https://t.me/AV_BOTz_UPDATE')
+SUPPORT = environ.get('SUPPORT', 'https://t.me/AV_SUPPORT_GROUP')
+
+#Dont Remove My Credit @AV_BOTz_UPDATE 
+#This Repo Is By @BOT_OWNER26 
+# For Any Kind Of Error Ask Us In Support Group @AV_SUPPORT_GROUP
+
+# file limit information
+ENABLE_LIMIT = environ.get("ENABLE_LIMIT", False) # True and False
+RATE_LIMIT_TIMEOUT = int(environ.get("RATE_LIMIT_TIMEOUT", "600"))  # limit time 600 = 10 minutes 
+MAX_FILES = int(environ.get("MAX_FILES", "10"))  # file limit 10 file Olay
 
 #Dont Remove My Credit @AV_BOTz_UPDATE 
 #This Repo Is By @BOT_OWNER26 
@@ -42,7 +51,7 @@ DATABASE_NAME = environ.get('DATABASE_NAME', "cluster0")
 
 # fsub  information
 AUTH_PICS = environ.get('AUTH_PICS', 'https://envs.sh/AwV.jpg')              
-AUTH_CHANNEL = int(environ.get("AUTH_CHANNEL", "-100"))
+AUTH_CHANNEL = (environ.get("AUTH_CHANNEL", "-100"))
 FSUB = environ.get("FSUB", True)
 
 # port information
@@ -58,7 +67,7 @@ PING_INTERVAL = int(environ.get("PING_INTERVAL", "1200"))  # 20 minutes
 SLEEP_THRESHOLD = int(getenv('SLEEP_THRESHOLD', '60'))
 
 # Online Stream and Download
-BIND_ADRESS = str(getenv('WEB_SERVER_BIND_ADDRESS', '0.0.0.0'))
+BIND_ADDRESS = str(getenv('WEB_SERVER_BIND_ADDRESS', '0.0.0.0'))
 WORKERS = int(getenv('WORKERS', '4'))
 MULTI_CLIENT = False
 name = str(environ.get('name', 'avbotz'))
@@ -68,12 +77,12 @@ if 'DYNO' in environ:
     APP_NAME = str(getenv('APP_NAME')) #dont need to fill anything here
 else:
     ON_HEROKU = False
-FQDN = str(getenv('FQDN', 'BIND_ADRESS:PORT')) if not ON_HEROKU or getenv('FQDN', '') else APP_NAME+'.herokuapp.com'
-HAS_SSL=bool(getenv('HAS_SSL',True))
+FQDN = str(getenv('FQDN', BIND_ADDRESS)) if not ON_HEROKU or getenv('FQDN', '') else APP_NAME+'.herokuapp.com'
+HAS_SSL=bool(getenv('HAS_SSL',False))
 if HAS_SSL:
     URL = "https://{}/".format(FQDN)
 else:
-    URL = "https://{}/".format(FQDN)
+    URL = "http://{}{}/".format(FQDN, "" if NO_PORT else ":" + str(PORT))
       
 #Dont Remove My Credit @AV_BOTz_UPDATE 
 #This Repo Is By @BOT_OWNER26 
