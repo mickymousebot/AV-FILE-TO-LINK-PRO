@@ -185,7 +185,7 @@ async def plan_info(c: Client, m: Message):
         text,
         quote=True,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("💎 View Trial Plan", callback_data="trial_info")]
+            [InlineKeyboardButton("💎 View Trial Plan", callback_data="myplan")]
         ])
     )
 
@@ -271,7 +271,7 @@ async def my_plan(c: Client, m: Message):
         f"{( '🔄 Your trial will end soon. Upgrade now!' if is_trial else '🔸 Thank you for being a premium user!')}",
         quote=True,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium_plans")]
+            [InlineKeyboardButton("💎 Upgrade Plan", callback_data="plans")]
         ]) if is_trial else None
     )
 
