@@ -12,6 +12,7 @@ class Database:
         self.banned_users = self.db.banned_users
         self.premium_users = self.db.premium_users
         self.trial_users = self.db.trial_users
+        self.user_files = self.db.user_files  # New collection for tracking file uploads
 
     @staticmethod
     def _create_user_dict(user_id: int, name: str) -> Dict:
@@ -25,7 +26,8 @@ class Database:
             "total_uploads": 0,
             "last_upload_date": datetime.now().date(),
             "is_premium": False,
-            "is_trial": False
+            "is_trial": False,
+            "current_plan_files_uploaded": 0  # Track files uploaded under current plan
         }
 
     async def add_user(self, user_id: int, name: str) -> bool:
@@ -71,6 +73,7 @@ class Database:
             await self.users.delete_many({"id": int(user_id)})
             await self.premium_users.delete_many({"user_id": int(user_id)})
             await self.trial_users.delete_many({"user_id": int(user_id)})
+            await self.user_files.delete_many({"user_id": int(user_id)})
             return True
         except Exception as e:
             print(f"Error deleting user: {e}")
@@ -138,12 +141,13 @@ class Database:
             else:
                 await self.premium_users.insert_one(premium_data)
 
-            # Update user document
+            # Update user document and reset file count
             await self.users.update_one(
                 {"id": int(user_id)},
                 {"$set": {
                     "is_premium": True,
-                    "is_trial": is_trial
+                    "is_trial": is_trial,
+                    "current_plan_files_uploaded": 0
                 }}
             )
             return True
@@ -288,11 +292,19 @@ class Database:
         """Update user's upload statistics"""
         try:
             current_date = datetime.now().date()
+            user = await self.users.find_one({"id": int(user_id)})
             
+            # Reset daily count if new day
             update_data = {
-                "$inc": {"daily_uploads": 1, "total_uploads": 1},
-                "$set": {"last_upload_date": current_date, "last_used": datetime.now()}
+                "$inc": {"total_uploads": 1},
+                "$set": {"last_used": datetime.now()}
             }
+            
+            if user and user.get("last_upload_date") != current_date:
+                update_data["$set"]["daily_uploads"] = 1
+                update_data["$set"]["last_upload_date"] = current_date
+            else:
+                update_data["$inc"]["daily_uploads"] = 1
             
             result = await self.users.update_one(
                 {"id": int(user_id)},
@@ -328,6 +340,71 @@ class Database:
         except Exception as e:
             print(f"Error getting total uploads: {e}")
             return 0
+
+    # File limit tracking methods
+    async def update_user_files_uploaded(self, user_id: int, count: int) -> bool:
+        """Update the number of files uploaded under current plan"""
+        try:
+            result = await self.users.update_one(
+                {"id": int(user_id)},
+                {"$set": {"current_plan_files_uploaded": count}}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error updating files uploaded: {e}")
+            return False
+
+    async def get_user_files_uploaded(self, user_id: int) -> int:
+        """Get number of files uploaded under current plan"""
+        try:
+            user = await self.users.find_one({"id": int(user_id)})
+            return user.get("current_plan_files_uploaded", 0) if user else 0
+        except Exception as e:
+            print(f"Error getting files uploaded: {e}")
+            return 0
+
+    async def reset_user_files_uploaded(self, user_id: int) -> bool:
+        """Reset the file count when plan changes"""
+        try:
+            result = await self.users.update_one(
+                {"id": int(user_id)},
+                {"$set": {"current_plan_files_uploaded": 0}}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error resetting files uploaded: {e}")
+            return False
+
+    async def log_file_upload(self, user_id: int, file_id: str, file_name: str, file_size: int) -> bool:
+        """Log file upload details"""
+        try:
+            await self.user_files.insert_one({
+                "user_id": int(user_id),
+                "file_id": file_id,
+                "file_name": file_name,
+                "file_size": file_size,
+                "upload_date": datetime.now()
+            })
+            return True
+        except Exception as e:
+            print(f"Error logging file upload: {e}")
+            return False
+
+    async def get_user_files(self, user_id: int, limit: int = 10) -> List[Dict]:
+        """Get user's recent file uploads"""
+        try:
+            files = []
+            async for file in self.user_files.find({"user_id": int(user_id)}).sort("upload_date", -1).limit(limit):
+                files.append({
+                    "file_id": file.get("file_id"),
+                    "file_name": file.get("file_name"),
+                    "file_size": file.get("file_size"),
+                    "upload_date": file.get("upload_date")
+                })
+            return files
+        except Exception as e:
+            print(f"Error getting user files: {e}")
+            return []
 
 # Initialize database connection
 db = Database(DATABASE_URI, DATABASE_NAME)
