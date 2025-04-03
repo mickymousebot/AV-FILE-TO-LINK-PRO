@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timedelta
 from database.users_db import db
 from web.utils.file_properties import get_hash
-from pyrogram import Client, filters, enums
+from pyrogram import Client, filters, enums, idle
 from info import URL, BOT_USERNAME, BIN_CHANNEL, BAN_ALERT, FSUB, CHANNEL, ADMINS
 from utils import get_size
 from Script import script
@@ -39,6 +39,55 @@ PLANS = {
         "price": "₹799"
     }
 }
+
+# Background task for checking expired plans
+async def check_expired_plans(client):
+    while True:
+        try:
+            current_time = datetime.now()
+            print(f"Checking for expired plans at {current_time}")
+            
+            expired_users = await db.premiumUsers.find({
+                "expiry_date": {"$lt": current_time}
+            }).to_list(length=None)
+            
+            print(f"Found {len(expired_users)} expired plans")
+            
+            for user in expired_users:
+                user_id = user['user_id']
+                plan_name = user.get('plan_name', 'Unknown Plan')
+                
+                # Remove premium status
+                success = await db.remove_premium(user_id)
+                if success:
+                    print(f"Removed expired plan for user {user_id} ({plan_name})")
+                    
+                    # Notify user
+                    try:
+                        await client.send_message(
+                            chat_id=user_id,
+                            text="⏳ Your premium plan has expired\n\n"
+                                 "To continue enjoying premium features:\n"
+                                 "1. View available plans: /plans\n"
+                                 "2. Contact @BOT_OWNER26 to renew"
+                        )
+                    except Exception as e:
+                        print(f"Could not notify user {user_id}: {str(e)}")
+                else:
+                    print(f"Failed to remove expired plan for user {user_id}")
+                
+        except Exception as e:
+            print(f"Error in expired plans check: {str(e)}")
+        
+        # Check every 6 hours (21600 seconds)
+        await asyncio.sleep(21600)
+
+# Startup handler
+async def startup(client):
+    # Start the background task
+    asyncio.create_task(check_expired_plans(client))
+    print("✅ Bot started successfully")
+    print("🔍 Premium plan expiry checker is running")
 
 @Client.on_message((filters.private) & (filters.document | filters.video | filters.audio), group=4)
 async def private_receive_handler(c: Client, m: Message):
@@ -94,10 +143,11 @@ async def private_receive_handler(c: Client, m: Message):
         share_link = f"https://t.me/share/url?url={file_link}"
         
         await msg.reply_text(
-            text=f"Requested By: [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n"
-                 f"User ID: {m.from_user.id}\n"
-                 f"Premium Status: {'✅ Active' if premium else '❌ Inactive'}\n"
-                 f"Stream Link: {stream}",
+            text=f"📤 New File Upload\n\n"
+                 f"👤 User: [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n"
+                 f"🆔 ID: {m.from_user.id}\n"
+                 f"💎 Premium: {'✅ Active' if premium else '❌ Inactive'}\n"
+                 f"🔗 Stream: {stream}",
             disable_web_page_preview=True, 
             quote=True
         )
@@ -141,11 +191,14 @@ async def private_receive_handler(c: Client, m: Message):
             )
 
     except FloodWait as e:
-        print(f"Sleeping for {e.value}s")
+        print(f"⏳ FloodWait: Sleeping for {e.value}s")
         await asyncio.sleep(e.value)
         await c.send_message(
             chat_id=BIN_CHANNEL,
-            text=f"FloodWait of {e.value}s from [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n\nUser ID: `{m.from_user.id}`",
+            text=f"⚠️ FloodWait Detected\n\n"
+                 f"⏱ Duration: {e.value} seconds\n"
+                 f"👤 User: [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n"
+                 f"🆔 ID: `{m.from_user.id}`",
             disable_web_page_preview=True
         )
 
@@ -341,6 +394,16 @@ async def approved_users(c: Client, m: Message):
         )
     
     await m.reply_text(text, quote=True)
+
+# Main bot runner
+async def main():
+    await Client.start()
+    await startup(Client)
+    await idle()
+    await Client.stop()
+
+if __name__ == "__main__":
+    Client.run(main())
 
 #Dont Remove My Credit @AV_BOTz_UPDATE 
 #This Repo Is By @BOT_OWNER26 
