@@ -12,23 +12,29 @@ from pyrogram.errors import FloodWait
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from plugins.avbot import is_user_joined, is_user_allowed
 
-# Premium Plans Configuration
+# Professional Premium Plans Configuration
 PLANS = {
-    "bronze": {
-        "name": "Bronze Plan",
-        "duration": 30,  # days
+    "trial": {
+        "name": "1-Day Trial",
+        "duration": 1,  # 1 day
+        "files": 50,
+        "price": "FREE"
+    },
+    "1month": {
+        "name": "1 Month Plan",
+        "duration": 30,
         "files": 150,
         "price": "₹99"
     },
-    "silver": {
-        "name": "Silver Plan",
-        "duration": 90,  # days
+    "3months": {
+        "name": "3 Months Plan",
+        "duration": 90,
         "files": 350,
         "price": "₹249"
     },
-    "gold": {
-        "name": "Gold Plan",
-        "duration": 365,  # days
+    "1year": {
+        "name": "1 Year Plan",
+        "duration": 365,
         "files": "Unlimited",
         "price": "₹799"
     }
@@ -46,23 +52,31 @@ async def private_receive_handler(c: Client, m: Message):
     
     user_id = m.from_user.id
 
-    # Check if user is premium
+    # Check premium status with expiry validation
     premium = await db.is_premium(user_id)
     if premium:
         expiry_date = await db.get_expiry_date(user_id)
         if expiry_date and datetime.now() > expiry_date:
             await db.remove_premium(user_id)
-            await m.reply_text("⚠️ Your premium plan has expired! Renew to continue enjoying premium benefits.")
+            await m.reply_text(
+                "⏳ Your premium subscription has expired.\n\n"
+                "To continue enjoying premium benefits, please renew your plan.\n"
+                "Use /plans to view available subscription options.",
+                quote=True
+            )
             premium = False
     
     if not premium:
         is_allowed, remaining_time = await is_user_allowed(user_id)
         if not is_allowed:
             await m.reply_text(
-                f"🚫 **Daily Limit Reached!**\n\n"
-                f"You can only upload 10 files per day for free.\n"
-                f"Upgrade to premium for more uploads!\n\n"
-                f"Use /planinfo to see premium plans",
+                "📊 **Daily Upload Limit Reached**\n\n"
+                "Free users are limited to 10 uploads per day.\n\n"
+                "Consider our premium plans for:\n"
+                "• Higher upload limits\n"
+                "• Priority processing\n"
+                "• Extended file retention\n\n"
+                "Explore plans: /plans",
                 quote=True
             )
             return
@@ -80,8 +94,12 @@ async def private_receive_handler(c: Client, m: Message):
         share_link = f"https://t.me/share/url?url={file_link}"
         
         await msg.reply_text(
-            text=f"Requested By: [{m.from_user.first_name}](tg://user?id={m.from_user.id})\nUser ID: {m.from_user.id}\nPremium: {'✅' if premium else '❌'}\nStream Link: {stream}",
-            disable_web_page_preview=True, quote=True
+            text=f"Requested By: [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n"
+                 f"User ID: {m.from_user.id}\n"
+                 f"Premium Status: {'✅ Active' if premium else '❌ Inactive'}\n"
+                 f"Stream Link: {stream}",
+            disable_web_page_preview=True, 
+            quote=True
         )
 
         if file_name:
@@ -91,18 +109,15 @@ async def private_receive_handler(c: Client, m: Message):
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup([
                     [
-                        InlineKeyboardButton(" Stream ", url=stream),
-                        InlineKeyboardButton(" Download ", url=download)
+                        InlineKeyboardButton("📺 Stream", url=stream),
+                        InlineKeyboardButton("⬇️ Download", url=download)
                     ],
                     [
-                        InlineKeyboardButton('Get File', url=file_link),
-                        InlineKeyboardButton('Share', url=share_link)
+                        InlineKeyboardButton('📂 Get File', url=file_link),
+                        InlineKeyboardButton('🔗 Share', url=share_link)
                     ],
                     [
-                        InlineKeyboardButton('Upgrade Plan', callback_data='premium_plan')
-                    ],
-                    [
-                        InlineKeyboardButton('Close', callback_data='close_data')
+                        InlineKeyboardButton('❌ Close', callback_data='close_data')
                     ]
                 ])
             )
@@ -113,17 +128,14 @@ async def private_receive_handler(c: Client, m: Message):
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup([
                     [
-                        InlineKeyboardButton(" Download ", url=download),
-                        InlineKeyboardButton('Get File', url=file_link)
+                        InlineKeyboardButton("⬇️ Download", url=download),
+                        InlineKeyboardButton('📂 Get File', url=file_link)
                     ],
                     [
-                        InlineKeyboardButton('Share', url=share_link)
+                        InlineKeyboardButton('🔗 Share', url=share_link)
                     ],
                     [
-                        InlineKeyboardButton('Upgrade Plan', callback_data='premium_plan')
-                    ],
-                    [
-                        InlineKeyboardButton('Close', callback_data='close_data')
+                        InlineKeyboardButton('❌ Close', callback_data='close_data')
                     ]
                 ])
             )
@@ -133,25 +145,31 @@ async def private_receive_handler(c: Client, m: Message):
         await asyncio.sleep(e.value)
         await c.send_message(
             chat_id=BIN_CHANNEL,
-            text=f"Gᴏᴛ FʟᴏᴏᴅWᴀɪᴛ ᴏғ {e.value}s from [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n\n**𝚄𝚜𝚎𝚛 𝙸𝙳 :** `{m.from_user.id}`",
+            text=f"FloodWait of {e.value}s from [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n\nUser ID: `{m.from_user.id}`",
             disable_web_page_preview=True
         )
 
-@Client.on_message(filters.command("planinfo") & filters.private)
+@Client.on_message(filters.command(["planinfo", "plans"]) & filters.private)
 async def plan_info(c: Client, m: Message):
-    text = "🌟 **Premium Plans Available** 🌟\n\n"
+    text = "✨ **Premium Subscription Plans** ✨\n\n"
     for plan_id, details in PLANS.items():
+        duration_text = "1 day" if details["duration"] == 1 else f"{details['duration']} days"
         text += (
-            f"🔹 **{details['name']}**\n"
-            f"📅 Duration: {details['duration']} days\n"
-            f"📁 Files: {details['files']}\n"
-            f"💰 Price: {details['price']}\n\n"
+            f"🌟 **{details['name']}**\n"
+            f"⏳ Duration: {duration_text}\n"
+            f"📁 File Limit: {details['files']}\n"
+            f"💵 Price: {details['price']}\n\n"
         )
+    
     text += (
-        "To purchase a plan, contact @BOT_OWNER26\n\n"
-        "After payment, send receipt to admin with command:\n"
-        "/approve <user_id> <plan> <payment_details>"
+        "🔹 To subscribe:\n"
+        "1. Contact @BOT_OWNER26\n"
+        "2. Make payment\n"
+        "3. Send receipt with command:\n"
+        "<code>/approve &lt;user_id&gt; &lt;plan&gt; &lt;payment_details&gt;</code>\n\n"
+        "Try our free 1-day trial with 50 file uploads!"
     )
+    
     await m.reply_text(text, quote=True)
 
 @Client.on_message(filters.command("myplan") & filters.private)
@@ -161,9 +179,11 @@ async def my_plan(c: Client, m: Message):
     
     if not premium:
         await m.reply_text(
-            "You don't have an active premium plan.\n\n"
-            "Free users can upload 10 files per day.\n"
-            "Use /planinfo to see premium plans.",
+            "🔹 **Account Status: Free Tier**\n\n"
+            "• Daily upload limit: 10 files\n"
+            "• No expiration date\n\n"
+            "Upgrade to premium for enhanced features:\n"
+            "/plans",
             quote=True
         )
         return
@@ -174,7 +194,9 @@ async def my_plan(c: Client, m: Message):
     if expiry_date and datetime.now() > expiry_date:
         await db.remove_premium(user_id)
         await m.reply_text(
-            "⚠️ Your premium plan has expired! Renew to continue enjoying premium benefits.",
+            "⏳ Your premium subscription has expired.\n\n"
+            "To renew your plan, please visit:\n"
+            "/plans",
             quote=True
         )
         return
@@ -182,11 +204,12 @@ async def my_plan(c: Client, m: Message):
     remaining_days = (expiry_date - datetime.now()).days if expiry_date else 0
     
     await m.reply_text(
-        f"🌟 **Your Premium Plan Details** 🌟\n\n"
+        "✨ **Your Premium Subscription** ✨\n\n"
         f"🔹 Plan: {plan_details.get('plan_name', 'Premium')}\n"
-        f"📅 Expiry Date: {expiry_date.strftime('%d %B %Y') if expiry_date else 'Lifetime'}\n"
-        f"⏳ Remaining Days: {remaining_days}\n"
-        f"📁 Files Allowed: {plan_details.get('files_allowed', 'Unlimited')}",
+        f"📅 Expiry: {expiry_date.strftime('%d %B %Y') if expiry_date else 'Lifetime'}\n"
+        f"⏳ Remaining: {remaining_days} days\n"
+        f"📁 File Limit: {plan_details.get('files_allowed', 'Unlimited')}\n\n"
+        "Thank you for being a valued subscriber!",
         quote=True
     )
 
@@ -194,8 +217,13 @@ async def my_plan(c: Client, m: Message):
 async def approve_user(c: Client, m: Message):
     if len(m.command) < 4:
         await m.reply_text(
-            "Usage: /approve <user_id> <plan> <payment_details>\n\n"
-            "Available plans: bronze, silver, gold",
+            "🛠 **Usage:**\n"
+            "<code>/approve &lt;user_id&gt; &lt;plan&gt; &lt;payment_details&gt;</code>\n\n"
+            "📋 Available plans:\n"
+            "- trial (1 day, 50 files)\n"
+            "- 1month (30 days, 150 files)\n"
+            "- 3months (90 days, 350 files)\n"
+            "- 1year (365 days, Unlimited files)",
             quote=True
         )
         return
@@ -207,7 +235,12 @@ async def approve_user(c: Client, m: Message):
         
         if plan not in PLANS:
             await m.reply_text(
-                "Invalid plan! Available plans: bronze, silver, gold",
+                "❌ Invalid plan specified.\n\n"
+                "Available plans:\n"
+                "- trial\n"
+                "- 1month\n"
+                "- 3months\n"
+                "- 1year",
                 quote=True
             )
             return
@@ -224,72 +257,87 @@ async def approve_user(c: Client, m: Message):
         )
         
         await m.reply_text(
-            f"✅ Successfully approved user {user_id} for {plan_details['name']}\n"
-            f"Expiry Date: {expiry_date.strftime('%d %B %Y')}",
+            f"✅ Successfully activated {plan_details['name']} for user {user_id}\n"
+            f"📅 Expires on: {expiry_date.strftime('%d %B %Y')}\n"
+            f"📁 File Limit: {plan_details['files']}",
             quote=True
         )
         
         try:
             await c.send_message(
                 chat_id=user_id,
-                text=f"🎉 Congratulations! Your premium plan has been activated!\n\n"
+                text=f"🎉 **Premium Plan Activated!** 🎉\n\n"
                      f"🔹 Plan: {plan_details['name']}\n"
-                     f"📅 Expiry Date: {expiry_date.strftime('%d %B %Y')}\n"
-                     f"📁 Files Allowed: {plan_details['files']}\n\n"
-                     f"Thank you for your purchase!"
+                     f"📅 Expiry: {expiry_date.strftime('%d %B %Y')}\n"
+                     f"📁 Files: {plan_details['files']}\n\n"
+                     f"Thank you for subscribing! Enjoy your premium benefits."
             )
         except Exception as e:
             print(f"Could not notify user {user_id}: {e}")
 
     except Exception as e:
-        await m.reply_text(f"Error: {str(e)}", quote=True)
+        await m.reply_text(
+            f"❌ Error processing request:\n<code>{str(e)}</code>",
+            quote=True
+        )
 
 @Client.on_message(filters.command("unapprove") & filters.user(ADMINS))
 async def unapprove_user(c: Client, m: Message):
     if len(m.command) < 2:
-        await m.reply_text("Usage: /unapprove <user_id>", quote=True)
+        await m.reply_text(
+            "🛠 **Usage:**\n"
+            "<code>/unapprove &lt;user_id&gt;</code>",
+            quote=True
+        )
         return
     
     try:
         user_id = int(m.command[1])
         await db.remove_premium(user_id)
-        await m.reply_text(f"✅ Successfully removed premium status from user {user_id}", quote=True)
+        await m.reply_text(
+            f"✅ Removed premium status from user {user_id}",
+            quote=True
+        )
         
         try:
             await c.send_message(
                 chat_id=user_id,
-                text="⚠️ Your premium plan has been removed by admin."
+                text="ℹ️ Your premium subscription has been removed by admin.\n\n"
+                     "You now have free account limitations."
             )
         except Exception as e:
             print(f"Could not notify user {user_id}: {e}")
             
     except Exception as e:
-        await m.reply_text(f"Error: {str(e)}", quote=True)
+        await m.reply_text(
+            f"❌ Error processing request:\n<code>{str(e)}</code>",
+            quote=True
+        )
 
 @Client.on_message(filters.command("approvedusers") & filters.user(ADMINS))
 async def approved_users(c: Client, m: Message):
     users = await db.get_all_premium_users()
     if not users:
-        await m.reply_text("No premium users found.", quote=True)
+        await m.reply_text("ℹ️ No active premium subscribers found.", quote=True)
         return
     
-    text = "🌟 **Premium Users List** 🌟\n\n"
+    text = "✨ **Premium Subscribers List** ✨\n\n"
     for user in users:
-        expiry_date = user.get("expiry_date", "Lifetime")
+        expiry_date = user.get("expiry_date")
         if isinstance(expiry_date, datetime):
-            expiry_date = expiry_date.strftime('%d %B %Y')
-            remaining_days = (user['expiry_date'] - datetime.now()).days
+            expiry_str = expiry_date.strftime('%d %B %Y')
+            remaining_days = (expiry_date - datetime.now()).days
             status = "✅ Active" if remaining_days > 0 else "❌ Expired"
         else:
-            status = "✅ Active"
+            expiry_str = "Lifetime"
             remaining_days = "∞"
+            status = "✅ Active"
         
         text += (
-            f"👤 User ID: {user['user_id']}\n"
-            f"🔹 Plan: {user.get('plan_name', 'Premium')}\n"
-            f"📅 Expiry: {expiry_date}\n"
-            f"⏳ Days Left: {remaining_days}\n"
-            f"Status: {status}\n\n"
+            f"👤 User ID: <code>{user['user_id']}</code>\n"
+            f"📝 Plan: {user.get('plan_name', 'Premium')}\n"
+            f"📅 Expiry: {expiry_str}\n"
+            f"⏳ Status: {status}\n\n"
         )
     
     await m.reply_text(text, quote=True)
