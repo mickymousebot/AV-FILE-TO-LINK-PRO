@@ -12,10 +12,6 @@ from pyrogram.errors import FloodWait
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from plugins.avbot import is_user_joined, is_user_allowed
 
-#Dont Remove My Credit @AV_BOTz_UPDATE 
-#This Repo Is By @BOT_OWNER26 
-# For Any Kind Of Error Ask Us In Support Group @AV_SUPPORT_GROUP
-
 # Premium Plans Configuration
 PLANS = {
     "bronze": {
@@ -53,16 +49,13 @@ async def private_receive_handler(c: Client, m: Message):
     # Check if user is premium
     premium = await db.is_premium(user_id)
     if premium:
-        # For premium users, check if plan is expired
         expiry_date = await db.get_expiry_date(user_id)
         if expiry_date and datetime.now() > expiry_date:
-            # Plan expired, remove premium status
             await db.remove_premium(user_id)
             await m.reply_text("⚠️ Your premium plan has expired! Renew to continue enjoying premium benefits.")
             premium = False
     
     if not premium:
-        # For non-premium users, check daily limit
         is_allowed, remaining_time = await is_user_allowed(user_id)
         if not is_allowed:
             await m.reply_text(
@@ -97,12 +90,20 @@ async def private_receive_handler(c: Client, m: Message):
                 quote=True,
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(" Stream ", url=stream),
-                     InlineKeyboardButton(" Download ", url=download)],
-                    [InlineKeyboardButton('Get File', url=file_link),
-                    InlineKeyboardButton('share', url=share_link),
-                    [InlineKeyboardButton('Upgrade Plan', callback_data='premium_plan')],
-                    [InlineKeyboardButton('close', callback_data='close_data')]
+                    [
+                        InlineKeyboardButton(" Stream ", url=stream),
+                        InlineKeyboardButton(" Download ", url=download)
+                    ],
+                    [
+                        InlineKeyboardButton('Get File', url=file_link),
+                        InlineKeyboardButton('Share', url=share_link)
+                    ],
+                    [
+                        InlineKeyboardButton('Upgrade Plan', callback_data='premium_plan')
+                    ],
+                    [
+                        InlineKeyboardButton('Close', callback_data='close_data')
+                    ]
                 ])
             )
         else:
@@ -111,11 +112,19 @@ async def private_receive_handler(c: Client, m: Message):
                 quote=True,
                 disable_web_page_preview=True,
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton(" Download ", url=download),
-                    InlineKeyboardButton('Get File', url=file_link)],
-                    [InlineKeyboardButton('share', url=share_link),
-                    [InlineKeyboardButton('Upgrade Plan', callback_data='premium_plan')],
-                    [InlineKeyboardButton('close', callback_data='close_data')]
+                    [
+                        InlineKeyboardButton(" Download ", url=download),
+                        InlineKeyboardButton('Get File', url=file_link)
+                    ],
+                    [
+                        InlineKeyboardButton('Share', url=share_link)
+                    ],
+                    [
+                        InlineKeyboardButton('Upgrade Plan', callback_data='premium_plan')
+                    ],
+                    [
+                        InlineKeyboardButton('Close', callback_data='close_data')
+                    ]
                 ])
             )
 
@@ -126,9 +135,8 @@ async def private_receive_handler(c: Client, m: Message):
             chat_id=BIN_CHANNEL,
             text=f"Gᴏᴛ FʟᴏᴏᴅWᴀɪᴛ ᴏғ {e.value}s from [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n\n**𝚄𝚜𝚎𝚛 𝙸𝙳 :** `{m.from_user.id}`",
             disable_web_page_preview=True
-           )
+        )
 
-# Premium Plan Information Command
 @Client.on_message(filters.command("planinfo") & filters.private)
 async def plan_info(c: Client, m: Message):
     text = "🌟 **Premium Plans Available** 🌟\n\n"
@@ -146,7 +154,6 @@ async def plan_info(c: Client, m: Message):
     )
     await m.reply_text(text, quote=True)
 
-# My Plan Command
 @Client.on_message(filters.command("myplan") & filters.private)
 async def my_plan(c: Client, m: Message):
     user_id = m.from_user.id
@@ -183,7 +190,6 @@ async def my_plan(c: Client, m: Message):
         quote=True
     )
 
-# Admin Commands
 @Client.on_message(filters.command("approve") & filters.user(ADMINS))
 async def approve_user(c: Client, m: Message):
     if len(m.command) < 4:
