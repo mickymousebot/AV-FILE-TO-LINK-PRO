@@ -65,6 +65,8 @@ async def private_receive_handler(c: Client, m: Message):
         return await m.reply(BAN_ALERT)
     
     user_id = m.from_user.id
+    files_uploaded = 0  # Initialize with default value
+    files_limit = 10     # Default free tier limit
 
     # Check if user is premium
     premium = await db.is_premium(user_id)
@@ -128,18 +130,24 @@ async def private_receive_handler(c: Client, m: Message):
         file_link = f"https://t.me/{BOT_USERNAME}?start=file_{msg.id}"
         share_link = f"https://t.me/share/url?url={file_link}"
         
+        # Only show file count for premium users
+        file_count_text = ""
+        if premium:
+            file_count_text = f"📁 Files Uploaded: {files_uploaded + 1}/{files_limit if files_limit != float('inf') else '∞'}\n"
+
         await msg.reply_text(
             text=f"📥 New File Upload\n\n"
                  f"👤 User: [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n"
                  f"🆔 ID: {m.from_user.id}\n"
                  f"💎 Premium: {'✅ Active' if premium else '❌ Inactive'}\n"
-                 f"📁 Files Uploaded: {files_uploaded + 1}/{files_limit if files_limit != float('inf') else '∞'}\n"
+                 f"{file_count_text}"
                  f"🔗 Stream: {stream}",
             disable_web_page_preview=True, quote=True
         )
 
-        # Update user's file count in database
-        await db.update_user_files_uploaded(user_id, files_uploaded + 1)
+        # Update user's file count in database if premium
+        if premium:
+            await db.update_user_files_uploaded(user_id, files_uploaded + 1)
 
         buttons = [
             [
