@@ -1,6 +1,6 @@
-import re
 import motor.motor_asyncio
 from datetime import datetime, timedelta
+import asyncio  # Added this import
 from info import DATABASE_NAME, DATABASE_URI
 
 class Database:
@@ -10,19 +10,26 @@ class Database:
         self.col = self.db.users
         self.bannedList = self.db.bannedList
         self.premiumUsers = self.db.premiumUsers
-        # Create indexes on startup
-        asyncio.create_task(self.create_indexes())
+        
+        # Initialize indexes without creating a task
+        self._init_task = asyncio.create_task(self._initialize())
 
-    async def create_indexes(self):
-        """Create database indexes for better performance"""
+    async def _initialize(self):
+        """Initialize database indexes"""
         try:
-            await self.premiumUsers.create_index("user_id", unique=True)
-            await self.premiumUsers.create_index("expiry_date")
-            await self.bannedList.create_index("banId", unique=True)
-            await self.col.create_index("id", unique=True)
+            await self.create_indexes()
             print("✅ Database indexes created successfully")
         except Exception as e:
             print(f"❌ Error creating indexes: {e}")
+
+    async def create_indexes(self):
+        """Create database indexes for better performance"""
+        await asyncio.gather(
+            self.premiumUsers.create_index("user_id", unique=True),
+            self.premiumUsers.create_index("expiry_date"),
+            self.bannedList.create_index("banId", unique=True),
+            self.col.create_index("id", unique=True)
+        )
 
     def new_user(self, id, name):
         return {
@@ -220,7 +227,3 @@ class Database:
         }
 
 db = Database(DATABASE_URI, DATABASE_NAME)
-
-#Dont Remove My Credit @AV_BOTz_UPDATE 
-#This Repo Is By @BOT_OWNER26 
-# For Any Kind Of Error Ask Us In Support Group @AV_SUPPORT_GROUP
