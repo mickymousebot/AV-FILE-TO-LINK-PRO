@@ -38,7 +38,7 @@ PLANS = {
     "1year": {
         "name": "✨ 1 Year Plan",
         "duration": 365,
-        "files": "Unlimited",
+        "files": float('inf'),  # Unlimited
         "price": "₹799",
         "description": "Ultimate plan with maximum benefits"
     }
@@ -94,6 +94,27 @@ async def private_receive_handler(c: Client, m: Message):
                 quote=True
             )
             return
+    else:
+        # Check premium user's file limit
+        plan_details = await db.get_premium_plan(user_id)
+        files_uploaded = await db.get_user_files_uploaded(user_id)
+        files_limit = plan_details.get("files_allowed", 0)
+        
+        # Convert to int if not unlimited
+        if files_limit != float('inf'):
+            files_limit = int(files_limit)
+            
+        if files_uploaded >= files_limit:
+            await m.reply_text(
+                "⚠️ **Plan Limit Reached**\n\n"
+                f"You've reached your plan's limit of {files_limit} files.\n\n"
+                "🔹 Options:\n"
+                "- Wait for next billing cycle\n"
+                "- Upgrade to higher plan with /plans\n"
+                "- Contact support for assistance",
+                quote=True
+            )
+            return
 
     file_id = m.document or m.video or m.audio
     file_name = file_id.file_name if file_id.file_name else None
@@ -112,9 +133,13 @@ async def private_receive_handler(c: Client, m: Message):
                  f"👤 User: [{m.from_user.first_name}](tg://user?id={m.from_user.id})\n"
                  f"🆔 ID: {m.from_user.id}\n"
                  f"💎 Premium: {'✅ Active' if premium else '❌ Inactive'}\n"
+                 f"📁 Files Uploaded: {files_uploaded + 1}/{files_limit if files_limit != float('inf') else '∞'}\n"
                  f"🔗 Stream: {stream}",
             disable_web_page_preview=True, quote=True
         )
+
+        # Update user's file count in database
+        await db.update_user_files_uploaded(user_id, files_uploaded + 1)
 
         buttons = [
             [
@@ -129,6 +154,15 @@ async def private_receive_handler(c: Client, m: Message):
 
         if not premium:
             buttons.append([InlineKeyboardButton('✨ Upgrade Now', callback_data='premium_plans')])
+        else:
+            # Show remaining files for premium users (except unlimited plans)
+            if files_limit != float('inf'):
+                remaining_files = files_limit - (files_uploaded + 1)
+                if remaining_files <= 10:  # Show warning if few files left
+                    buttons.append([InlineKeyboardButton(
+                        f'⚠️ {remaining_files} files remaining - Upgrade', 
+                        callback_data='premium_plans'
+                    )])
 
         buttons.append([InlineKeyboardButton('❌ Close', callback_data='close_data')])
 
@@ -179,7 +213,7 @@ async def plan_info(c: Client, m: Message):
         text += (
             f"{details['name']}\n"
             f"⏳ Duration: {details['duration']} days\n"
-            f"📁 Files: {details['files']}\n"
+            f"📁 Files: {'Unlimited' if details['files'] == float('inf') else details['files']}\n"
             f"💰 Price: {details['price']}\n"
             f"🔹 {details['description']}\n\n"
         )
@@ -226,6 +260,9 @@ async def trial_plan(c: Client, m: Message):
         is_trial=True
     )
     
+    # Reset file count for new plan
+    await db.reset_user_files_uploaded(user_id)
+    
     await m.reply_text(
         "🎉 Your Free Trial Has Been Activated!\n\n"
         f"🔹 Plan: {plan_details['name']}\n"
@@ -242,19 +279,28 @@ async def my_plan(c: Client, m: Message):
     premium = await db.is_premium(user_id)
     
     if not premium:
+        is_allowed, remaining_time = await is_user_allowed(user_id)
+        remaining_files = 10 - await db.get_user_files_uploaded(user_id)
+        
         await m.reply_text(
             "🔹 **Your Current Plan: Free Tier**\n\n"
-            "📊 Daily Upload Limit: 10 files\n"
-            "⏳ Resets in: 24 hours\n\n"
+            f"📊 Daily Upload Limit: {remaining_files}/10 files\n"
+            f"⏳ Resets in: {remaining_time}\n\n"
             "Upgrade to premium for more benefits with /plans\n"
             "Try our free trial with /trial",
-            quote=True
+            quote=True,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("💎 View Plans", callback_data="premium_plans")],
+                [InlineKeyboardButton("🎁 Try Free Trial", callback_data="trial_info")]
+            ])
         )
         return
     
     expiry_date = await db.get_expiry_date(user_id)
     plan_details = await db.get_premium_plan(user_id)
     is_trial = await db.check_trial_used(user_id)
+    files_uploaded = await db.get_user_files_uploaded(user_id)
+    files_limit = plan_details.get("files_allowed", 0)
     
     if expiry_date and datetime.now() > expiry_date:
         await db.remove_premium(user_id)
@@ -272,17 +318,29 @@ async def my_plan(c: Client, m: Message):
     
     plan_type = "🎁 Trial" if is_trial else "💎 Premium"
     
-    await m.reply_text(
+    text = (
         f"🔹 **Your Current Plan: {plan_details.get('plan_name', 'Premium')}**\n\n"
         f"📝 Type: {plan_type}\n"
         f"⏳ Remaining: {remaining_days} days, {remaining_hours} hours\n"
         f"📅 Expires on: {expiry_date.strftime('%d %B %Y %H:%M') if expiry_date else 'Lifetime'}\n"
-        f"📁 Files Allowed: {plan_details.get('files_allowed', 'Unlimited')}\n\n"
-        f"{( '🔄 Your trial will end soon. Upgrade now!' if is_trial else '🔸 Thank you for being a premium user!')}",
+        f"📁 Files: {files_uploaded}/{'Unlimited' if files_limit == float('inf') else files_limit}\n\n"
+    )
+    
+    if is_trial:
+        text += "🔄 Your trial will end soon. Upgrade now to continue premium benefits!\n"
+    elif files_limit != float('inf') and files_uploaded >= files_limit * 0.9:  # 90% usage warning
+        text += "⚠️ You're approaching your plan's file limit. Consider upgrading!\n"
+    else:
+        text += "🔸 Thank you for being a premium user!\n"
+    
+    buttons = []
+    if is_trial or (files_limit != float('inf') and files_uploaded >= files_limit * 0.8):
+        buttons.append([InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium_plans")])
+    
+    await m.reply_text(
+        text,
         quote=True,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("💎 Upgrade Plan", callback_data="premium_plans")]
-        ]) if is_trial else None
+        reply_markup=InlineKeyboardMarkup(buttons) if buttons else None
     )
 
 @Client.on_message(filters.command("approve") & filters.user(ADMINS))
@@ -327,6 +385,9 @@ async def approve_user(c: Client, m: Message):
             is_trial=(plan == "trial")
         )
         
+        # Reset file count for new plan
+        await db.reset_user_files_uploaded(user_id)
+        
         await m.reply_text(
             f"✅ Successfully activated {plan_details['name']} for user {user_id}\n\n"
             f"📅 Expiry: {expiry_date.strftime('%d %B %Y %H:%M')}\n"
@@ -340,9 +401,12 @@ async def approve_user(c: Client, m: Message):
                 text=f"🎉 **Premium Subscription Activated!**\n\n"
                      f"🔹 Plan: {plan_details['name']}\n"
                      f"⏳ Duration: {plan_details['duration']} days\n"
-                     f"📁 Files: {plan_details['files']}\n"
+                     f"📁 Files: {'Unlimited' if plan_details['files'] == float('inf') else plan_details['files']}\n"
                      f"📅 Expires on: {expiry_date.strftime('%d %B %Y')}\n\n"
-                     f"Thank you for choosing our service!"
+                     f"Thank you for choosing our service!",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📊 View Plan", callback_data="myplan")]
+                ])
             )
         except Exception as e:
             print(f"Could not notify user {user_id}: {e}")
@@ -402,6 +466,8 @@ async def approved_users(c: Client, m: Message):
     for user in users:
         expiry_date = user.get("expiry_date")
         is_trial = user.get("is_trial", False)
+        files_uploaded = await db.get_user_files_uploaded(user['user_id'])
+        files_limit = user.get("files_allowed", 0)
         
         if is_trial:
             trial_users += 1
@@ -423,6 +489,7 @@ async def approved_users(c: Client, m: Message):
         text += (
             f"🆔 {user['user_id']} - {user.get('plan_name', 'Unknown')}\n"
             f"📅 {expiry_str} ({remaining_days} days) - {status}\n"
+            f"📁 Files: {files_uploaded}/{'∞' if files_limit == float('inf') else files_limit}\n"
             f"📝 {user.get('payment_details', 'No details')}\n\n"
         )
     
