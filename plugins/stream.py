@@ -9,7 +9,7 @@ from info import URL, BOT_USERNAME, BIN_CHANNEL, BAN_ALERT, FSUB, CHANNEL, ADMIN
 from utils import get_size
 from Script import script
 from pyrogram.errors import FloodWait
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from plugins.avbot import is_user_joined, is_user_allowed
 
 # Premium Plans Configuration
@@ -43,6 +43,16 @@ PLANS = {
         "description": "Ultimate plan with maximum benefits"
     }
 }
+
+@Client.on_callback_query(filters.regex('^trial_info$'))
+async def trial_info_callback(c: Client, query: CallbackQuery):
+    await query.answer()
+    await my_plan(c, query.message)
+
+@Client.on_callback_query(filters.regex('^premium_plans$'))
+async def premium_plans_callback(c: Client, query: CallbackQuery):
+    await query.answer()
+    await plan_info(c, query.message)
 
 @Client.on_message((filters.private) & (filters.document | filters.video | filters.audio), group=4)
 async def private_receive_handler(c: Client, m: Message):
@@ -185,7 +195,7 @@ async def plan_info(c: Client, m: Message):
         text,
         quote=True,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("💎 View Trial Plan", callback_data="trial_plan")]
+            [InlineKeyboardButton("💎 View Trial Plan", callback_data="trial_info")]
         ])
     )
 
