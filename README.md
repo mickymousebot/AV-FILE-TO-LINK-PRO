@@ -61,11 +61,17 @@ If you encounter any issues deploying the bot, feel free to seek assistance in o
 start - Check if the bot is running.
 help - Check if the help
 about - Check if the about 
-ban - user ban [FOR ADMINS USE ONLY]
-unban - user unban [FOR ADMINS USE ONLY]
-users - Check bot users [FOR ADMINS USE ONLY]
-broadcast - Message Broadcast command [FOR ADMINS USE ONLY]
-restart - To restart the bot [FOR ADMINS USE ONLY]
+plans - Shows premium subscription plans
+trial - Activates free trial plan
+myplan - Shows current subscription status
+approve - 🤭Gaandu Back (Admin Only)
+unapprove - 🤓Gya Beta Tuu (Admin Only)
+approvedusers - 🧐All Approved Users (Admin Only) 
+ban - user ban [Admin Only]
+unban - user unban [Admin Only]
+users - Check bot users [Admin Only]
+broadcast - Message Broadcast command [Admin Only]
+restart - To restart the bot [Admin Only]
 ```
 </details>
 
